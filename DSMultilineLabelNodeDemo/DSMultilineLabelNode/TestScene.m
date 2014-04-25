@@ -12,6 +12,7 @@
 @interface TestScene() {
 	
 	DSMultilineLabelNode* node;
+	DSMultilineLabelNode* delayTextureNode;
 	
 }
 
@@ -27,6 +28,15 @@
 		self.backgroundColor = [SKColor blueColor];
 		//	self.scaleMode = SKSceneScaleModeAspectFit;
 		
+		delayTextureNode = [DSMultilineLabelNode labelNodeWithFontNamed:@"Futura"];
+		delayTextureNode.autoTexture = NO;
+		delayTextureNode.fontColor = [SKColor greenColor];
+		delayTextureNode.text = @"Text that should get rendered when retexture is called via gcd";
+		delayTextureNode.paragraphWidth = 400;
+		[delayTextureNode retexture];
+		[self addChild:delayTextureNode];
+		delayTextureNode.position = CGPointMake(200, 200);
+		
 		node = [DSMultilineLabelNode labelNodeWithFontNamed:@"Futura"];
 		node.text = @"Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.";
 		node.paragraphWidth = 400;
@@ -41,7 +51,6 @@
 //		node.anchorPoint = CGPointMake(0.0, 1.0); //Good for left justification
 //		node.anchorPoint = CGPointMake(0.5, 0.5); //(default) Good for center justification
 //		node.anchorPoint = CGPointMake(1.0, 1.0); // Good for right justification
-				
 		[self addChild:node];
 		node.position = CGPointMake(CGRectGetMidX(self.frame),CGRectGetMidY(self.frame));
 		

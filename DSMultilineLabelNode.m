@@ -25,6 +25,7 @@
     
     if (self) {
         
+		self.autoTexture = YES;
         //Initialize the same values as a default SKLabelNode
         self.fontColor = [SKColor whiteColor];
         self.fontName = @"Helvetica";
@@ -32,9 +33,6 @@
         
         self.horizontalAlignmentMode = SKLabelHorizontalAlignmentModeCenter;
         self.verticalAlignmentMode = SKLabelVerticalAlignmentModeBaseline;
-        
-        //Paint our initial texture
-        [self retexture];
     }
     
     return self;
@@ -68,50 +66,66 @@
 -(void) setFontColor:(SKColor *)fontColor
 {
     _fontColor = fontColor;
-    [self retexture];
+    if (self.autoTexture){
+		[self retexture];
+	}
 }
 
 -(void) setFontName:(NSString *)fontName
 {
     _fontName = fontName;
-    [self retexture];
+    if (self.autoTexture){
+		[self retexture];
+	}
 }
 
 -(void) setFontSize:(CGFloat)fontSize
 {
     _fontSize = fontSize;
-    [self retexture];
+    if (self.autoTexture){
+		[self retexture];
+	}
 }
 
 -(void) setHorizontalAlignmentMode:(SKLabelHorizontalAlignmentMode)horizontalAlignmentMode
 {
     _horizontalAlignmentMode = horizontalAlignmentMode;
-    [self retexture];
+    if (self.autoTexture){
+		[self retexture];
+	}
 }
 
 -(void) setText:(NSString *)text
 {
     _text = text;
-    [self retexture];
+    if (self.autoTexture){
+		[self retexture];
+	}
 }
 
 -(void) setVerticalAlignmentMode:(SKLabelVerticalAlignmentMode)verticalAlignmentMode
 {
     _verticalAlignmentMode = verticalAlignmentMode;
-    [self retexture];
+    if (self.autoTexture){
+		[self retexture];
+	}
 }
 
--(void)setParagraphWidth:(CGFloat)paragraphWidth {
+-(void) setParagraphWidth:(CGFloat)paragraphWidth {
 	
 	_paragraphWidth = paragraphWidth;
-	[self retexture];
-	
+	if (self.autoTexture){
+		[self retexture];
+	}
 }
 
 //Generates and applies new textures based on the current property values
--(void) retexture
+-(void)retexture
 {
-    DSMultiLineLabelImage *newTextImage = [self imageFromText:self.text];
+	[self imageFromText:self.text];
+}
+
+-(void)renderTextImage:(DSMultiLineLabelImage *)newTextImage{
     SKTexture *newTexture =[SKTexture textureWithImage:newTextImage];
     
     SKSpriteNode *selfNode = (SKSpriteNode*) self;
@@ -119,10 +133,9 @@
     
     //Resetting the texture also reset the anchorPoint.  Let's recenter it.
     selfNode.anchorPoint = CGPointMake(0.5, 0.5);
-
 }
 
--(DSMultiLineLabelImage *)imageFromText:(NSString *)text
+-(void)imageFromText:(NSString *)text
 {
     //First we define a paragrahp style, which has the support for doing the line breaks and text alignment that we require
     NSMutableParagraphStyle *paragraphStyle = [[NSMutableParagraphStyle alloc] init];
@@ -174,7 +187,7 @@
 	
 	//Mac build crashes when the size is nothing - this also skips out on unecessary cycles below when the size is nothing
 	if (textRect.size.width == 0 || textRect.size.height == 0) {
-		return Nil;
+		return;
 	}
     
     //The size of the bounding rect is going to be the size of our new node, so set the size here.
@@ -182,17 +195,39 @@
     selfNode.size = textRect.size;
     
 #if TARGET_OS_IPHONE
-    //Create the graphics context
-    UIGraphicsBeginImageContextWithOptions(textRect.size,NO,0.0);
+	if (self.autoTexture){
+		//Create the graphics context
+		UIGraphicsBeginImageContextWithOptions(textRect.size,NO,0.0);
+		
+		//Actually draw the text into the context, using our defined attributed
+		[text drawInRect:textRect withAttributes:textAttributes];
+		
+		//Create the image from the context
+		DSMultiLineLabelImage *image = UIGraphicsGetImageFromCurrentImageContext();
+		
+		//Close the context
+		UIGraphicsEndImageContext();
+		[self renderTextImage:image];
+	} else {
+		dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^(void) {
+			//Create the graphics context
+			UIGraphicsBeginImageContextWithOptions(textRect.size,NO,0.0);
+			
+			//Actually draw the text into the context, using our defined attributed
+			[text drawInRect:textRect withAttributes:textAttributes];
+			
+			//Create the image from the context
+			DSMultiLineLabelImage *image = UIGraphicsGetImageFromCurrentImageContext();
+			
+			//Close the context
+			UIGraphicsEndImageContext();
+			
+			dispatch_async(dispatch_get_main_queue(), ^{
+				[self renderTextImage:image];
+			});
+		});
+	}
     
-    //Actually draw the text into the context, using our defined attributed
-    [text drawInRect:textRect withAttributes:textAttributes];
-    
-    //Create the image from the context
-    DSMultiLineLabelImage *image = UIGraphicsGetImageFromCurrentImageContext();
-    
-    //Close the context
-    UIGraphicsEndImageContext();
 #else 
 
 	DSMultiLineLabelImage *image = [[DSMultiLineLabelImage alloc] initWithSize:textRect.size];
@@ -208,11 +243,10 @@
 	[text drawInRect:textRect withAttributes:textAttributes];
 	
 	[image unlockFocus];
+	[self renderTextImage:image];
 	
 
 #endif
-    
-    return image;
 }
 
 //Performs translation between the SKLabelHorizontalAlignmentMode supported by SKLabelNode and the NSTextAlignment required for string drawing

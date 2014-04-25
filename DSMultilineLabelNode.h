@@ -34,9 +34,11 @@
 @property(copy, nonatomic) NSString *text;
 @property(nonatomic) SKLabelVerticalAlignmentMode verticalAlignmentMode;
 @property(nonatomic, assign) CGFloat paragraphWidth;
+@property(nonatomic, assign) BOOL autoTexture;
 
 + (instancetype)labelNodeWithFontNamed:(NSString *)fontName;
 - (instancetype)initWithFontNamed:(NSString *)fontName;
+- (void)retexture;
 
 
 @end
